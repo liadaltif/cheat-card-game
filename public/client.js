@@ -133,22 +133,14 @@ function renderGame() {
 
   // Turn indicator
   if (s.phase === 'GAME_OVER') {
-    turnIndicatorEl.textContent = 'Game Over';
+    turnIndicatorEl.textContent = '';
     turnIndicatorEl.className = '';
-  } else if (s.isYourTurn && s.phase === 'PLAY') {
-    turnIndicatorEl.textContent = 'Your turn \u2014 pick a card to play';
+  } else if (s.isYourTurn) {
+    turnIndicatorEl.textContent = 'Your turn';
     turnIndicatorEl.className = 'your-turn';
-  } else if (!s.isYourTurn && s.phase === 'PLAY') {
-    turnIndicatorEl.textContent = s.currentPlayerName + ' is playing...';
+  } else {
+    turnIndicatorEl.textContent = s.currentPlayerName + "'s turn";
     turnIndicatorEl.className = 'opponent-turn';
-  } else if (s.phase === 'CHALLENGE') {
-    if (s.isYourTurn) {
-      turnIndicatorEl.textContent = s.lastPlayerName + ' played a card \u2014 Call Cheat or play your card';
-      turnIndicatorEl.className = 'your-turn';
-    } else {
-      turnIndicatorEl.textContent = 'Waiting for ' + s.currentPlayerName + '...';
-      turnIndicatorEl.className = 'opponent-turn';
-    }
   }
 
   declaredInfoEl.classList.add('hidden');

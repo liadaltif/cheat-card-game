@@ -258,14 +258,12 @@ io.on('connection', (socket) => {
     const isCurrentPlayer = gs.currentPlayerIndex === playerIndex;
 
     if (gs.phase === 'PLAY' && !isCurrentPlayer) return;
-    if (gs.phase === 'CHALLENGE' && isCurrentPlayer) return;
+    if (gs.phase === 'CHALLENGE' && playerIndex === gs.lastPlay.playerIndex) return;
     if (gs.phase === 'GAME_OVER') return;
 
-    // During CHALLENGE, the next player in order can play (implicit pass)
-    if (gs.phase === 'CHALLENGE' && !isCurrentPlayer) {
-      // Only the next player in turn can respond
-      const nextPlayer = (gs.lastPlay.playerIndex + 1) % room.players.length;
-      if (playerIndex !== nextPlayer) return;
+    // During CHALLENGE, the current player can play (implicit pass)
+    if (gs.phase === 'CHALLENGE' && playerIndex !== gs.lastPlay.playerIndex) {
+      if (!isCurrentPlayer) return;
 
       // Accept the previous play (implicit pass)
       gs.visibleTopRank = gs.lastPlay.declaredRank;
@@ -313,11 +311,11 @@ io.on('connection', (socket) => {
 
     const gs = room.gameState;
     const playerIndex = room.players.findIndex(p => p.id === socket.id);
+    const isCurrentPlayer = gs.currentPlayerIndex === playerIndex;
 
     if (gs.phase !== 'CHALLENGE') return;
-    // Only the next player after the one who played can challenge
-    const nextPlayer = (gs.lastPlay.playerIndex + 1) % room.players.length;
-    if (playerIndex !== nextPlayer) return;
+    if (playerIndex === gs.lastPlay.playerIndex) return;
+    if (!isCurrentPlayer) return;
     if (!gs.lastPlay) return;
 
     const wasCheating = !isCardMatchingDeclaredRank(gs.lastPlay.card, gs.lastPlay.declaredRank);
@@ -377,12 +375,11 @@ io.on('connection', (socket) => {
     const isCurrentPlayer = gs.currentPlayerIndex === playerIndex;
 
     if (gs.phase === 'PLAY' && !isCurrentPlayer) return;
-    if (gs.phase === 'CHALLENGE' && isCurrentPlayer) return;
+    if (gs.phase === 'CHALLENGE' && playerIndex === gs.lastPlay.playerIndex) return;
     if (gs.phase === 'GAME_OVER') return;
 
-    if (gs.phase === 'CHALLENGE' && !isCurrentPlayer) {
-      const nextPlayer = (gs.lastPlay.playerIndex + 1) % room.players.length;
-      if (playerIndex !== nextPlayer) return;
+    if (gs.phase === 'CHALLENGE' && playerIndex !== gs.lastPlay.playerIndex) {
+      if (!isCurrentPlayer) return;
 
       gs.visibleTopRank = gs.lastPlay.declaredRank;
       gs.visibleTopCard = null;
