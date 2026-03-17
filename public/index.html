@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cheat - Card Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- LOBBY SCREEN -->
+  <div id="lobby">
+    <h1>CHEAT</h1>
+    <p class="subtitle">The bluffing card game</p>
+
+    <div class="lobby-section">
+      <input type="text" id="player-name" placeholder="Your name" maxlength="16">
+    </div>
+
+    <div class="lobby-section">
+      <label for="max-players" class="label">Players:</label>
+      <select id="max-players">
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+      </select>
+      <button id="btn-create">Create Room</button>
+    </div>
+
+    <div id="room-code-display" class="hidden">
+      <p>Room Code:</p>
+      <span id="room-code"></span>
+      <p id="waiting-text" class="waiting"></p>
+    </div>
+
+    <div class="lobby-divider">OR</div>
+
+    <div class="lobby-section">
+      <div class="join-row">
+        <input type="text" id="join-code" placeholder="Room code" maxlength="4">
+        <button id="btn-join">Join</button>
+      </div>
+    </div>
+
+    <p id="lobby-error" class="error hidden"></p>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="game" class="hidden">
+    <!-- Opponents area -->
+    <div id="opponents-area"></div>
+
+    <!-- Center area -->
+    <div id="center-area">
+      <div id="game-info">
+        <div id="bank-info">Bank: <span id="bank-count">0</span> cards</div>
+        <div id="pile-section">
+          <div id="top-card"></div>
+          <div id="pile-label">Pile: <span id="pile-count">0</span> cards</div>
+        </div>
+      </div>
+      <div id="turn-indicator"></div>
+      <div id="declared-info" class="hidden"></div>
+    </div>
+
+    <!-- Action buttons -->
+    <div id="action-area">
+      <button id="btn-draw" class="hidden">Draw from Bank</button>
+      <button id="btn-cheat" class="hidden">Call Cheat!</button>
+    </div>
+
+    <!-- Declare rank overlay (inline) -->
+    <div id="declare-area" class="hidden">
+      <p>Declare this card as:</p>
+      <div id="declare-buttons"></div>
+    </div>
+
+    <!-- Player's hand -->
+    <div id="hand-area">
+      <div id="hand"></div>
+    </div>
+
+    <!-- Challenge result overlay -->
+    <div id="challenge-overlay" class="overlay hidden">
+      <div class="overlay-content">
+        <h2 id="challenge-title"></h2>
+        <div id="revealed-card-container"></div>
+        <p id="challenge-declared"></p>
+        <p id="challenge-message"></p>
+      </div>
+    </div>
+
+    <!-- Game over overlay -->
+    <div id="gameover-overlay" class="overlay hidden">
+      <div class="overlay-content">
+        <h2 id="gameover-title"></h2>
+        <button id="btn-play-again">Play Again</button>
+        <button id="btn-leave">Leave</button>
+      </div>
+    </div>
+
+    <!-- Disconnected overlay -->
+    <div id="disconnect-overlay" class="overlay hidden">
+      <div class="overlay-content">
+        <h2>Opponent Disconnected</h2>
+        <button id="btn-back-lobby">Back to Lobby</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>
