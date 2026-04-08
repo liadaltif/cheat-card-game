@@ -5,7 +5,10 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  pingInterval: 10000,
+  pingTimeout: 5000
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -491,7 +494,7 @@ function startTTTGame(room) {
     boards: Array.from({ length: 9 }, () => Array(9).fill(null)),
     boardWinners: Array(9).fill(null),
     activeBoard: null,
-    currentPlayer: 'X',
+    currentPlayer: Math.random() < 0.5 ? 'X' : 'O',
     phase: 'PLAYING',
     winner: null
   };

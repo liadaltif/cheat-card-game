@@ -325,3 +325,12 @@ button:active { transform: scale(0.97); }
 #play-again-btn:hover { background: #4cae4c; }
 #leave-btn, #back-to-lobby-btn { background: #555; }
 #leave-btn:hover, #back-to-lobby-btn:hover { background: #666; }
+
+.reconnecting-title {
+  color: #f0a500;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.reconnecting-sub {
+  color: #888;
+  font-size: 0.85rem;
+}
