@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mega Tic Tac Toe</title>
+  <link rel="stylesheet" href="/ttt/style.css" />
+</head>
+<body>
+
+  <!-- LOBBY -->
+  <div id="lobby">
+    <h1>Mega Tic Tac Toe</h1>
+    <p class="subtitle">Ultimate Tic Tac Toe — 2 Players</p>
+
+    <div class="lobby-section">
+      <input id="player-name" type="text" placeholder="Your name" maxlength="20" autocomplete="off" />
+    </div>
+
+    <div class="lobby-section">
+      <button id="create-btn">Create Room</button>
+    </div>
+
+    <div id="room-code-display" class="hidden">
+      <p>Share this code with your opponent:</p>
+      <div id="room-code-value"></div>
+      <p class="waiting-text">Waiting for opponent...</p>
+    </div>
+
+    <div class="lobby-divider">or</div>
+
+    <div class="lobby-section join-section">
+      <input id="join-code" type="text" placeholder="Room code" maxlength="4" autocomplete="off" />
+      <button id="join-btn">Join Room</button>
+    </div>
+
+    <div id="lobby-error" class="error-msg hidden"></div>
+  </div>
+
+  <!-- GAME -->
+  <div id="game" class="hidden">
+    <div id="status-bar">
+      <div id="player-info">
+        <span id="your-symbol-badge"></span>
+        <span id="your-name-label"></span>
+        <span class="vs">vs</span>
+        <span id="opponent-symbol-badge"></span>
+        <span id="opponent-name-label"></span>
+      </div>
+      <div id="turn-indicator"></div>
+    </div>
+
+    <div id="macro-board"></div>
+
+    <div id="game-over-overlay" class="hidden">
+      <div class="overlay-box">
+        <div id="game-over-title"></div>
+        <div id="game-over-subtitle"></div>
+        <button id="play-again-btn">Play Again</button>
+        <button id="leave-btn">Leave Room</button>
+      </div>
+    </div>
+
+    <div id="disconnect-overlay" class="hidden">
+      <div class="overlay-box">
+        <div class="overlay-title">Opponent disconnected</div>
+        <button id="back-to-lobby-btn">Back to Lobby</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/ttt/client.js"></script>
+</body>
+</html>
