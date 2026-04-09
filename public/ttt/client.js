@@ -59,6 +59,33 @@ let mySymbol      = null;
 let storedRoom    = null;  // { code, name } — set when we join a room
 let inGame        = false; // true once we've received at least one game-state
 
+// ── Audio ─────────────────────────────────────────────────────────────────────
+let audioCtx = null;
+
+document.addEventListener('click', () => {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+});
+
+function playTurnSound() {
+  if (!audioCtx || audioCtx.state !== 'running') return;
+  const t = audioCtx.currentTime;
+  const osc  = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, t);
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(0.3, t + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+  osc.start(t);
+  osc.stop(t + 0.5);
+}
+
+// ── Turn tracking (for sound trigger) ────────────────────────────────────────
+let prevIsYourTurn = false;
+
 // ── Lobby events ──────────────────────────────────────────────────────────────
 createBtn.addEventListener('click', () => {
   const name = playerNameInput.value.trim() || 'Player 1';
@@ -114,6 +141,13 @@ socket.on('disconnect', () => {
   }
 });
 
+// ── Page Visibility: reconnect immediately when tab becomes active ─────────────
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !socket.connected && inGame) {
+    socket.connect();
+  }
+});
+
 // ── Socket game events ────────────────────────────────────────────────────────
 socket.on('room-created', ({ code }) => {
   if (storedRoom) storedRoom.code = code;
@@ -131,6 +165,11 @@ socket.on('game-state', (state) => {
   reconnectingOverlay.classList.add('hidden');
   showGame();
   renderGame(state);
+
+  if (state.isYourTurn && !prevIsYourTurn && state.phase === 'PLAYING') {
+    playTurnSound();
+  }
+  prevIsYourTurn = state.isYourTurn;
 });
 
 socket.on('error-msg', ({ message }) => {
