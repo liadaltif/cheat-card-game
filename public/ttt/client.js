@@ -1,5 +1,9 @@
 'use strict';
 
+// Prevent Render's free tier from spinning down the server (spins down after
+// 15 min of no HTTP requests — WebSocket pings don't count)
+setInterval(() => fetch('/ping').catch(() => {}), 14 * 60 * 1000);
+
 const socket = io('/ttt', {
   reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
@@ -174,11 +178,13 @@ socket.on('game-state', (state) => {
 
 socket.on('error-msg', ({ message }) => {
   reconnectingOverlay.classList.add('hidden');
-  // If we were trying to reconnect and the room is gone, go back to lobby
   if (inGame) {
     clearSession();
     resetToLobby();
-    showLobbyError('Your room is no longer available. Please start a new game.');
+    const reason = message === 'Room not found.'
+      ? 'The server restarted and your game was lost. Sorry about that — please start a new game.'
+      : `Couldn't rejoin: ${message} Please start a new game.`;
+    showLobbyError(reason);
   } else {
     showLobbyError(message);
     createBtn.disabled = false;

@@ -12,6 +12,9 @@ const io = new Server(server, {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Keep Render's free tier from spinning down the server
+app.get('/ping', (req, res) => res.sendStatus(200));
+
 app.get('/ttt', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'ttt', 'index.html'));
 });
@@ -550,7 +553,7 @@ ttt.on('connection', (socket) => {
 
     // Reconnection: room already has 2 players
     if (room.players.length >= 2) {
-      const disconnectedIdx = room.players.findIndex(p => !ttt.sockets.get(p.id));
+      const disconnectedIdx = room.players.findIndex(p => !ttt.sockets.get(p.id)?.connected);
       if (disconnectedIdx === -1) {
         socket.emit('error-msg', { message: 'Room is full.' });
         return;
