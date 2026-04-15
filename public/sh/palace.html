@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Palace · Shithead</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  background:#f0f0f0;
+  font-family:'DM Sans',system-ui,sans-serif;
+  color:#111;
+  display:flex;flex-direction:column;
+  user-select:none;-webkit-user-select:none;
+}
+#game{
+  height:100%;
+  display:flex;flex-direction:column;justify-content:center;
+  max-width:920px;margin:0 auto;width:100%;
+  padding:10px 20px 8px;gap:10px;
+}
+
+/* Card sizes — dynamically fit the screen.
+   Layout has ~4 card-heights of content + ~400px of chrome.
+   clamp keeps cards between 55px and 118px tall. */
+:root{
+  --ch: clamp(55px, calc((100vh - 400px) / 4), 118px);
+  --cw: calc(var(--ch) * 0.695);
+}
+
+.hdr{text-align:center;flex-shrink:0;line-height:1.1;}
+.hdr-title{
+  font-family:'Playfair Display',Georgia,serif;font-weight:700;
+  font-size:clamp(16px,2.5vw,28px);
+  color:#111;letter-spacing:6px;
+}
+.hdr-sub{font-size:10px;color:#888;letter-spacing:4px;margin-top:1px;}
+
+
+
+.panel{
+  flex:0 0 auto;
+  background:transparent;
+  border:none;
+  padding:4px;
+  display:flex;flex-direction:column;gap:6px;
+  overflow:visible;
+}
+.panel#bot-panel{justify-content:flex-start;}
+.panel#player-panel{justify-content:flex-start;}
+.plabel{display:none;}
+
+.stack-row{display:flex;gap:10px;justify-content:center;flex-shrink:0;}
+.stk{position:relative;flex-shrink:0;width:var(--cw);height:calc(var(--ch) + 20px);}
+
+.card{
+  width:var(--cw);height:var(--ch);
+  border-radius:7px;
+  display:flex;flex-direction:column;justify-content:space-between;
+  padding:4px 5px;overflow:hidden;position:relative;flex-shrink:0;
+  transition:transform .15s,box-shadow .15s;
+}
+.card.fu{
+  background:#fff;border:1.5px solid #222;
+  box-shadow:2px 2px 0 #bbb;
+}
+.card.fd{
+  background:#111;border:1.5px solid #111;
+  box-shadow:2px 2px 0 #555;
+}
+.card.fd::after{
+  content:'';position:absolute;inset:4px;border-radius:4px;
+  border:1px solid rgba(255,255,255,.15);
+  background:repeating-linear-gradient(45deg,rgba(255,255,255,.06) 0,rgba(255,255,255,.06) 1px,transparent 1px,transparent 7px);
+}
+.card.sel.fu{
+  border:2.5px solid #111 !important;
+  box-shadow:4px 4px 0 #111 !important;
+  transform:translateY(-14px) !important;
+  z-index:10 !important;
+}
+.card.dim{opacity:.22;pointer-events:none;}
+.card.ptr{cursor:pointer;}
+.card.ptr.fu:hover:not(.dim){transform:translateY(-5px);box-shadow:3px 5px 0 #999;}
+.card.ptr.fd:hover{box-shadow:3px 3px 0 #444;}
+
+.cr,.cr2{
+  font-size:clamp(9px, calc(var(--cw) * 0.145), 13px);
+  font-weight:700;font-family:Georgia,serif;line-height:1.2;color:inherit;
+}
+.cr2{transform:rotate(180deg);}
+.cs{
+  text-align:center;
+  font-size:clamp(14px, calc(var(--cw) * 0.31), 24px);
+  line-height:1;color:inherit;
+}
+.red{color:#c0392b;}
+.blk{color:#111;}
+
+.slot-ph{
+  width:var(--cw);height:var(--ch);border-radius:7px;flex-shrink:0;
+  border:1.5px dashed #ccc;background:#f7f7f7;
+}
+
+/* Hand row — flex-wrap, no forced min-height */
+.hrow{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;align-items:flex-end;}
+.hrow .card{position:relative;}
+
+.play-area{
+  flex-shrink:0;display:flex;justify-content:center;align-items:flex-start;gap:44px;
+}
+.pzone{text-align:center;}
+.pzone-lbl{font-size:10px;color:#999;letter-spacing:1px;margin-bottom:5px;font-weight:500;}
+.pzone-lbl{font-size:10px;color:#999;letter-spacing:1px;margin-bottom:5px;font-weight:500;}
+.pzone-pile{position:relative;width:var(--cw);height:var(--ch);}
+.pzone-pile .card{position:absolute;}
+
+.btns{flex-shrink:0;display:flex;gap:10px;justify-content:center;}
+.btn{
+  background:#111;color:#fff;border:none;border-radius:7px;
+  padding:9px 24px;
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;
+  cursor:pointer;transition:background .15s,transform .1s;letter-spacing:.3px;
+}
+.btn:hover:not(:disabled){background:#333;}
+.btn:active:not(:disabled){transform:scale(.97);}
+.btn:disabled{background:#ddd;color:#aaa;cursor:not-allowed;}
+.btn.outline{background:#fff;color:#111;border:1.5px solid #111;}
+.btn.outline:hover:not(:disabled){background:#f5f5f5;}
+.btn.outline:disabled{border-color:#ccc;color:#ccc;background:#fff;}
+
+.legend{flex-shrink:0;text-align:center;font-size:10px;color:#bbb;letter-spacing:.3px;}
+.empty-lbl{font-size:12px;color:#bbb;display:flex;align-items:center;justify-content:center;padding:4px 10px;}
+
+.bot-fan{display:flex;justify-content:center;padding-top:8px;}
+.bot-fan .card{position:relative;flex-shrink:0;margin-right:calc(var(--cw) * -0.58);}
+.bot-fan .card:last-child{margin-right:0;}
+@keyframes burnFlash{0%{opacity:1;}30%{opacity:.35;}60%{opacity:1;}80%{opacity:.6;}100%{opacity:1;}}
+.burning{animation:burnFlash .45s ease-out;}
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="bot-panel" class="panel"></div>
+  <div class="play-area">
+    <div class="pzone">
+      <div class="pzone-lbl" id="draw-lbl">DRAW</div>
+      <div class="pzone-pile" id="draw-pile"></div>
+    </div>
+    <div class="pzone">
+      <div class="pzone-lbl" id="pile-lbl">PILE</div>
+      <div class="pzone-pile" id="play-pile"></div>
+    </div>
+  </div>
+  <div id="player-panel" class="panel"></div>
+  <div class="btns" id="btns"></div>
+
+</div>
+
+<script>
+const SUITS=['♠','♥','♦','♣'];
+const RANKS=[2,3,4,5,6,7,8,9,10,11,12,13,14];
+const RN={2:'2',3:'3',4:'4',5:'5',6:'6',7:'7',8:'8',9:'9',10:'10',11:'J',12:'Q',13:'K',14:'A'};
+const RED=new Set(['♥','♦']);
+
+const shuf=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=0|Math.random()*(i+1);[b[i],b[j]]=[b[j],b[i]];}return b;};
+const mkDeck=()=>{let n=0;return shuf(SUITS.flatMap(s=>RANKS.map(r=>({s,r,id:n++}))));};
+const effTop=p=>{for(let i=p.length-1;i>=0;i--)if(p[i].r!==3)return p[i];return null;};
+const canPlay=(c,pile,u7)=>{if(c.r===2||c.r===3||c.r===10)return true;const t=effTop(pile);if(!t)return true;return u7?c.r<=7:c.r>=t.r;};
+const burnCheck=pile=>pile.length>=4&&pile.slice(-4).every(c=>c.r===pile[pile.length-1].r);
+const isDone=p=>!p.h.length&&!p.fu.length&&!p.fd.length;
+const srcOf=p=>p.h.length?'h':p.fu.length?'fu':'fd';
+
+let G,BT;
+
+function newGame(){
+  const d=mkDeck(),tk=n=>d.splice(0,n);
+  G={phase:'setup',p:{h:tk(3),fu:tk(3),fd:tk(3)},b:{h:tk(3),fu:tk(3),fd:tk(3)},
+    draw:d,pile:[],turn:'p',u7:false,sel:new Set(),swap:null,winner:null,
+    msg:''};
+}
+
+function applyPlay(cards,who){
+  const r=cards[0].r,ids=new Set(cards.map(c=>c.id)),rm=a=>a.filter(c=>!ids.has(c.id));
+  const p={...G.p,h:[...G.p.h],fu:[...G.p.fu],fd:[...G.p.fd]};
+  const b={...G.b,h:[...G.b.h],fu:[...G.b.fu],fd:[...G.b.fd]};
+  const dr=[...G.draw];
+  const w=who==='p'?p:b;
+  w.h=rm(w.h);w.fu=rm(w.fu);w.fd=rm(w.fd);
+  while(w.h.length<3&&dr.length)w.h.push(dr.shift());
+  let pile=[...G.pile,...cards];
+  const burned=r===10||burnCheck(pile);
+  if(burned)pile=[];
+  const u7=!burned&&r===7;
+  const nxt=burned?who:who==='p'?'b':'p';
+  const winner=isDone(p)?'p':isDone(b)?'b':null;
+  const lbl=cards.length>1?`${cards.length}× ${RN[r]}`:RN[r];
+  G={...G,p,b,draw:dr,pile,turn:nxt,u7,sel:new Set(),swap:null,winner,
+    phase:winner?'over':'playing',
+    msg:winner==='p'?'You win! The bot is the shithead.':
+        winner==='b'?'Bot wins. YOU are the shithead!':
+        burned?`${lbl} burned the pile — ${nxt==='p'?'your turn':'bot\'s turn'}`:
+        u7?`7 played — ${nxt==='p'?'you must':'bot must'} play ≤ 7`:
+        nxt==='p'?'Your turn.':'Bot thinking...'};
+  if(burned){
+    const pp=document.getElementById('play-pile');
+    if(pp){pp.classList.add('burning');setTimeout(()=>pp.classList.remove('burning'),450);}
+  }
+}
+
+function pickUp(who,extra=null){
+  const cards=extra?[...G.pile,extra]:[...G.pile],n=cards.length;
+  if(who==='p'){
+    const fd=extra?G.p.fd.filter(c=>c.id!==extra.id):G.p.fd;
+    G={...G,p:{...G.p,h:[...G.p.h,...cards],fd},pile:[],turn:'b',u7:false,sel:new Set(),
+      msg:`You picked up ${n} card${n!==1?'s':''}. Bot's turn.`};
+  }else{
+    const fd=extra?G.b.fd.filter(c=>c.id!==extra.id):G.b.fd;
+    G={...G,b:{...G.b,h:[...G.b.h,...cards],fd},pile:[],turn:'p',u7:false,
+      msg:`Bot picked up ${n} card${n!==1?'s':''}. Your turn!`};
+  }
+}
+
+function botGo(){
+  if(G.turn!=='b'||G.phase!=='playing')return;
+  const{pile,u7}=G,s=srcOf(G.b),ac=G.b[s];
+  if(s==='fd'){
+    const c=ac[0|Math.random()*ac.length];
+    canPlay(c,pile,u7)?applyPlay([c],'b'):pickUp('b',c);
+  }else{
+    const v=ac.filter(c=>canPlay(c,pile,u7));
+    if(!v.length){
+      if(pile.length)pickUp('b');
+      else G={...G,turn:'p',u7:false,msg:'Bot passes. Your turn!'};
+    }else{
+      const gr={};v.forEach(c=>{if(!gr[c.r])gr[c.r]=[];gr[c.r].push(c);});
+      const rks=Object.keys(gr).map(Number).sort((a,b)=>a-b);
+      if(gr[10]&&pile.length>=3)applyPlay(gr[10],'b');
+      else applyPlay(gr[rks[0]],'b');
+    }
+  }
+  render();sched();
+}
+function sched(){
+  clearTimeout(BT);
+  if(G.turn==='b'&&G.phase==='playing'&&!G.winner)
+    BT=setTimeout(botGo,1000);
+}
+
+function mkCard(c,fd=false){
+  const el=document.createElement('div');
+  el.className='card '+(fd?'fd':'fu');
+  if(!fd){
+    const red=RED.has(c.s),tc=red?'red':'blk';
+    el.innerHTML=`<div class="cr ${tc}">${RN[c.r]}<br><small>${c.s}</small></div><div class="cs ${tc}">${c.s}</div><div class="cr2 ${tc}">${RN[c.r]}<br><small>${c.s}</small></div>`;
+  }
+  return el;
+}
+function mkSlot(){const d=document.createElement('div');d.className='slot-ph';return d;}
+function setAct(el,a){el.dataset.a=a;el.classList.add('ptr');}
+
+function fanHand(cards,{fd=false,sel=null,dimFn=null,actFn=null}={}){
+  const wrap=document.createElement('div');
+  if(!cards.length){wrap.style.height='10px';return wrap;}
+  // Read actual rendered card width from an existing card in the DOM
+  const sample=document.querySelector('.card');
+  const cw=sample?sample.offsetWidth:72;
+  const n=cards.length;
+  const gameW=(document.getElementById('game')||document.body).offsetWidth;
+  const maxW=Math.min(gameW-40,640);
+  const minPeek=Math.max(20,cw*0.26);
+  const maxPeek=cw+6;
+  const peek=n>1?Math.min(maxPeek,Math.max(minPeek,(maxW-cw)/(n-1))):maxPeek;
+  const overlap=cw-peek;
+  wrap.style.cssText='display:flex;justify-content:center;align-items:flex-end;padding-top:18px;flex-wrap:nowrap;';
+  cards.forEach((card,i)=>{
+    const c=mkCard(card,fd);
+    c.style.position='relative';
+    c.style.flexShrink='0';
+    c.style.zIndex=i;
+    if(i<n-1)c.style.marginRight=`-${overlap}px`;
+    if(sel&&sel.has(card.id))c.classList.add('sel');
+    if(dimFn&&dimFn(card))c.classList.add('dim');
+    if(actFn){const a=actFn(card);if(a)setAct(c,a);}
+    wrap.appendChild(c);
+  });
+  return wrap;
+}
+
+function renderBotPanel(){
+  const panel=document.getElementById('bot-panel');
+  const bTurn=G.turn==='b'&&G.phase==='playing';
+  panel.className='panel'+(bTurn?' bot-turn':'');
+  panel.innerHTML='';
+
+  const lbl=document.createElement('div');lbl.className='plabel';
+  lbl.innerHTML=`<span>Bot${bTurn?' &nbsp;<span class="tbadge">thinking…</span>':''}</span><span class="stats">${G.b.fd.length} face-down &nbsp;·&nbsp; ${G.b.fu.length} face-up &nbsp;·&nbsp; ${G.b.h.length} in hand</span>`;
+  panel.appendChild(lbl);
+
+  // Stacked positions: face-down behind, face-up in front
+  const sr=document.createElement('div');sr.className='stack-row';
+  for(let i=0;i<3;i++){
+    const pos=document.createElement('div');pos.className='stk';
+    const fdC=G.b.fd[i],fuC=G.b.fu[i];
+    if(fdC){const c=mkCard(fdC,true);c.style.cssText='position:absolute;top:0;left:0;z-index:0;';pos.appendChild(c);}
+    else{const s=mkSlot();s.style.cssText='position:absolute;top:0;left:0;';pos.appendChild(s);}
+    if(fuC){const c=mkCard(fuC,false);c.style.cssText='position:absolute;top:20px;left:0;z-index:1;';pos.appendChild(c);}
+    sr.appendChild(pos);
+  }
+  panel.appendChild(sr);
+
+  // Bot hand — CSS fan overlap, shown ABOVE the stacked positions
+  if(G.b.h.length){
+    const bfan=document.createElement('div');bfan.className='bot-fan';
+    G.b.h.forEach(()=>{
+      const c=document.createElement('div');c.className='card fd';c.style.position='relative';
+      bfan.appendChild(c);
+    });
+    panel.insertBefore(bfan,sr);
+  }
+}
+
+function renderPlayerPanel(){
+  const panel=document.getElementById('player-panel');
+  const ps=srcOf(G.p),pTurn=G.turn==='p'&&G.phase==='playing',isOver=G.phase==='over';
+  panel.className='panel'+(pTurn?' my-turn':'');
+  panel.innerHTML='';
+
+  const lbl=document.createElement('div');lbl.className='plabel';
+  lbl.innerHTML=`<span>You${pTurn?' &nbsp;<span class="tbadge">your turn</span>':''}</span><span class="stats">${G.p.fd.length} face-down &nbsp;·&nbsp; ${G.p.fu.length} face-up &nbsp;·&nbsp; ${G.p.h.length} hand${ps==='fd'&&pTurn?' &nbsp;·&nbsp; click a face-down card':''}</span>`;
+  panel.appendChild(lbl);
+
+  const sr=document.createElement('div');sr.className='stack-row';
+  for(let i=0;i<3;i++){
+    const pos=document.createElement('div');pos.className='stk';
+    const fdC=G.p.fd[i],fuC=G.p.fu[i];
+    const fdActive=ps==='fd'&&pTurn,fuActive=ps==='fu'&&pTurn;
+
+    if(fdC){
+      const c=mkCard(fdC,!isOver);c.style.cssText='position:absolute;top:0;left:0;z-index:0;';
+      if(!isOver){if(ps!=='fd')c.classList.add('dim');if(fdActive)setAct(c,`pfd-${fdC.id}`);}
+      pos.appendChild(c);
+    }else{const s=mkSlot();s.style.cssText='position:absolute;top:0;left:0;';pos.appendChild(s);}
+
+    if(fuC){
+      const c=mkCard(fuC,false);
+      c.style.cssText=`position:absolute;top:${fdC?'20px':'0'};left:0;z-index:1;`;
+      if(G.phase==='setup'){
+        setAct(c,`sfu-${fuC.id}`);
+        if(G.swap)c.style.outline='2px solid #111';
+      }else{
+        if(G.sel.has(fuC.id))c.classList.add('sel');
+        if(ps!=='fu'&&!isOver)c.classList.add('dim');
+        if(fuActive)setAct(c,`pfu-${fuC.id}`);
+      }
+      pos.appendChild(c);
+    }
+    sr.appendChild(pos);
+  }
+  panel.appendChild(sr);
+
+  // Hand cards — plain row with gaps
+  const hr=document.createElement('div');
+  hr.style.cssText='display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding-top:8px;';
+  if(G.phase==='setup'){
+    G.p.h.forEach(card=>{
+      const c=mkCard(card,false);c.style.position='relative';
+      setAct(c,`sh-${card.id}`);
+      if(G.swap?.id===card.id)c.classList.add('sel');
+      hr.appendChild(c);
+    });
+  }else{
+    G.p.h.forEach(card=>{
+      const c=mkCard(card,false);c.style.position='relative';
+      if(G.sel.has(card.id))c.classList.add('sel');
+      if(ps==='h'&&pTurn&&!canPlay(card,G.pile,G.u7))c.classList.add('dim');
+      if(ps==='h'&&pTurn)setAct(c,`ph-${card.id}`);
+      hr.appendChild(c);
+    });
+    if(!G.p.h.length){const sp=document.createElement('span');sp.className='empty-lbl';sp.textContent='—';hr.appendChild(sp);}
+  }
+  panel.appendChild(hr);
+}
+
+function renderPiles(){
+  const dp=document.getElementById('draw-pile');dp.innerHTML='';
+  document.getElementById('draw-lbl').textContent=`DRAW · ${G.draw.length}`;
+  if(G.draw.length){const c=mkCard(G.draw[0],true);c.style.cssText='position:absolute;top:0;left:0;';dp.appendChild(c);}
+  else{const s=mkSlot();s.style.cssText='position:absolute;top:0;left:0;';dp.appendChild(s);}
+
+  const pp=document.getElementById('play-pile');pp.innerHTML='';
+  document.getElementById('pile-lbl').textContent=`PILE · ${G.pile.length}`;
+  if(G.pile.length){
+    if(G.pile.length>=2){
+      const c2=mkCard(G.pile[G.pile.length-2],false);
+      c2.style.cssText='position:absolute;top:0;left:-5px;z-index:0;opacity:.55;';pp.appendChild(c2);
+    }
+    const ct=mkCard(G.pile[G.pile.length-1],false);
+    ct.style.cssText='position:absolute;top:0;left:0;z-index:1;';pp.appendChild(ct);
+  }else{const s=mkSlot();s.style.cssText='position:absolute;top:0;left:0;';pp.appendChild(s);}
+}
+
+
+function renderBtns(){
+  const b=document.getElementById('btns');b.innerHTML='';
+  const mk=(txt,a,cls='')=>{const btn=document.createElement('button');btn.className='btn '+cls;btn.dataset.a=a;btn.textContent=txt;b.appendChild(btn);return btn;};
+  if(G.phase==='setup'){mk('Ready →','ready');}
+  else if(G.phase==='playing'){
+    const ps=srcOf(G.p),pTurn=G.turn==='p';
+    if(ps!=='fd'){
+      const ac=G.p[ps],hasV=ac.some(c=>canPlay(c,G.pile,G.u7));
+      const pb=mk('Play selected','play');
+      pb.disabled=!pTurn||!G.sel.size;
+      const ub=mk('Pick up pile','pup','outline');
+      ub.disabled=!pTurn||!(!hasV&&G.pile.length>0);
+    }
+  }else if(G.phase==='over'){mk('Play again','ng');}
+}
+
+function render(){
+  renderBotPanel();renderPiles();renderPlayerPanel();renderBtns();sched();
+}
+
+document.getElementById('game').addEventListener('click',e=>{
+  const el=e.target.closest('[data-a]');if(!el)return;
+  const a=el.dataset.a;if(!a)return;
+  if(a==='ready'){
+    const first=Math.random()<0.5?'p':'b';
+    const msg=first==='p'?'Coin flip — you go first!':'Coin flip — bot goes first!';
+    G={...G,phase:'playing',swap:null,turn:first,msg};
+    render();return;
+  }
+  if(a==='ng'){newGame();render();return;}
+  if(a==='play'){
+    if(G.turn!=='p'||G.phase!=='playing')return;
+    const cards=[...G.p.h,...G.p.fu].filter(c=>G.sel.has(c.id));
+    if(!cards.length||!cards.every(c=>c.r===cards[0].r))return;
+    if(!canPlay(cards[0],G.pile,G.u7)){G={...G,msg:`Can't play ${RN[cards[0].r]} there!`};render();return;}
+    applyPlay(cards,'p');render();return;
+  }
+  if(a==='pup'){if(G.turn!=='p')return;pickUp('p');render();return;}
+  if(a.startsWith('sh-')){
+    const id=+a.slice(3),card=G.p.h.find(c=>c.id===id);
+    G={...G,swap:G.swap?.id===id?null:card,
+      msg:G.swap?.id===id?'Select a hand card to swap.':'Now tap a face-up card to swap with it.'};
+    render();return;
+  }
+  if(a.startsWith('sfu-')){
+    const id=+a.slice(4);if(!G.swap)return;
+    const hi=G.p.h.findIndex(c=>c.id===G.swap.id),fi=G.p.fu.findIndex(c=>c.id===id);
+    if(hi<0||fi<0)return;
+    const h=[...G.p.h],fu=[...G.p.fu];[h[hi],fu[fi]]=[fu[fi],h[hi]];
+    G={...G,p:{...G.p,h,fu},swap:null,msg:'Swapped! Keep going or click Ready.'};render();return;
+  }
+  if(a.startsWith('ph-')||a.startsWith('pfu-')){
+    if(G.turn!=='p'||G.phase!=='playing')return;
+    const id=+a.slice(a.indexOf('-')+1);
+    const all=[...G.p.h,...G.p.fu],card=all.find(c=>c.id===id);if(!card)return;
+    const sel=new Set(G.sel);
+    if(sel.has(id)){sel.delete(id);}
+    else{if(sel.size){const f=all.find(c=>c.id===[...sel][0]);if(!f||f.r!==card.r)sel.clear();}sel.add(id);}
+    G={...G,sel};render();return;
+  }
+  if(a.startsWith('pfd-')){
+    if(G.turn!=='p'||G.phase!=='playing')return;
+    const id=+a.slice(4),card=G.p.fd.find(c=>c.id===id);if(!card)return;
+    canPlay(card,G.pile,G.u7)?applyPlay([card],'p'):pickUp('p',card);render();return;
+  }
+});
+
+newGame();render();
+</script>
+</body>
+</html>
