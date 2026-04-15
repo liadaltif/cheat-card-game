@@ -19,6 +19,10 @@ app.get('/ttt', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'ttt', 'index.html'));
 });
 
+app.get('/sh', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'sh', 'index.html'));
+});
+
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const SUITS = ['\u2660', '\u2665', '\u2666', '\u2663'];
 
@@ -648,6 +652,342 @@ ttt.on('connection', (socket) => {
     if (isExplicit) {
       tttRooms.delete(currentRoom);
     }
+    currentRoom = null;
+  }
+});
+
+// ─── Shithead / Palace ───────────────────────────────────────────────────────
+
+const shRooms = new Map();
+
+function generateSHRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code;
+  do {
+    code = '';
+    for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  } while (shRooms.has(code));
+  return code;
+}
+
+const SH_SUITS = ['♠', '♥', '♦', '♣'];
+const SH_RANKS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+
+function mkSHDeck() {
+  let n = 0;
+  const deck = SH_SUITS.flatMap(s => SH_RANKS.map(r => ({ s, r, id: n++ })));
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+}
+
+function shEffTop(pile) {
+  for (let i = pile.length - 1; i >= 0; i--) if (pile[i].r !== 3) return pile[i];
+  return null;
+}
+
+function shCanPlay(card, pile, u7) {
+  if (card.r === 2 || card.r === 3 || card.r === 10) return true;
+  const t = shEffTop(pile);
+  if (!t) return true;
+  return u7 ? card.r <= 7 : card.r >= t.r;
+}
+
+function shBurnCheck(pile) {
+  return pile.length >= 4 && pile.slice(-4).every(c => c.r === pile[pile.length - 1].r);
+}
+
+function shSrcOf(gs, idx) {
+  if (gs.hands[idx].length) return 'h';
+  if (gs.faceUp[idx].length) return 'fu';
+  return 'fd';
+}
+
+function shIsDone(gs, idx) {
+  return !gs.hands[idx].length && !gs.faceUp[idx].length && !gs.faceDown[idx].length;
+}
+
+function startSHGame(room) {
+  const deck = mkSHDeck();
+  const take = n => deck.splice(0, n);
+  room.gameState = {
+    phase: 'setup',
+    hands: [take(3), take(3)],
+    faceUp: [take(3), take(3)],
+    faceDown: [take(3), take(3)],
+    draw: deck,
+    pile: [],
+    turn: null,
+    u7: false,
+    ready: [false, false],
+    winner: null,
+    lastAction: 'Swap hand cards with face-up cards, then click Ready.'
+  };
+  emitSHGameState(room);
+}
+
+function getSHPlayerView(room, playerIdx) {
+  const gs = room.gameState;
+  const oppIdx = 1 - playerIdx;
+  const src = gs.phase === 'playing' ? shSrcOf(gs, playerIdx) : 'h';
+  return {
+    phase: gs.phase,
+    turn: gs.turn,
+    u7: gs.u7,
+    isYourTurn: gs.turn === playerIdx && gs.phase === 'playing',
+    yourIndex: playerIdx,
+    yourName: room.players[playerIdx].name,
+    lastAction: gs.lastAction,
+    ready: gs.ready,
+    hand: gs.hands[playerIdx],
+    faceUp: gs.faceUp[playerIdx],
+    faceDownCount: gs.faceDown[playerIdx].length,
+    opponentName: room.players[oppIdx] ? room.players[oppIdx].name : '',
+    opponentHandCount: gs.hands[oppIdx].length,
+    opponentFaceUp: gs.faceUp[oppIdx],
+    opponentFaceDownCount: gs.faceDown[oppIdx].length,
+    pileTop: gs.pile.length ? gs.pile[gs.pile.length - 1] : null,
+    pileSecond: gs.pile.length >= 2 ? gs.pile[gs.pile.length - 2] : null,
+    pileCount: gs.pile.length,
+    drawCount: gs.draw.length,
+    source: src,
+    winner: gs.winner,
+    winnerName: gs.winner !== null ? room.players[gs.winner].name : null
+  };
+}
+
+function emitSHGameState(room) {
+  room.players.forEach((player, idx) => {
+    sh.to(player.id).emit('game-state', getSHPlayerView(room, idx));
+  });
+}
+
+const sh = io.of('/sh');
+
+sh.on('connection', (socket) => {
+  let currentRoom = null;
+
+  socket.on('create-room', ({ name }) => {
+    const code = generateSHRoomCode();
+    const room = {
+      code,
+      players: [{ id: socket.id, name: name || 'Player 1' }],
+      gameState: null
+    };
+    shRooms.set(code, room);
+    currentRoom = code;
+    socket.join(code);
+    socket.emit('room-created', { code });
+    socket.emit('room-update', { players: room.players.map(p => p.name), maxPlayers: 2 });
+  });
+
+  socket.on('join-room', ({ code, name }) => {
+    code = (code || '').toUpperCase().trim();
+    const room = shRooms.get(code);
+    if (!room) { socket.emit('error-msg', { message: 'Room not found.' }); return; }
+
+    if (room.players.length >= 2) {
+      const disconnectedIdx = room.players.findIndex(p => !sh.sockets.get(p.id)?.connected);
+      if (disconnectedIdx === -1) { socket.emit('error-msg', { message: 'Room is full.' }); return; }
+      room.players[disconnectedIdx].id = socket.id;
+      if (name) room.players[disconnectedIdx].name = name;
+      currentRoom = code;
+      socket.join(code);
+      for (const p of room.players) {
+        sh.to(p.id).emit('room-update', { players: room.players.map(pl => pl.name), maxPlayers: 2 });
+      }
+      if (room.gameState) emitSHGameState(room);
+      return;
+    }
+
+    room.players.push({ id: socket.id, name: name || 'Player 2' });
+    currentRoom = code;
+    socket.join(code);
+    for (const p of room.players) {
+      sh.to(p.id).emit('room-update', { players: room.players.map(pl => pl.name), maxPlayers: 2 });
+    }
+    startSHGame(room);
+  });
+
+  socket.on('swap-cards', ({ handCardId, faceUpCardId }) => {
+    if (!currentRoom) return;
+    const room = shRooms.get(currentRoom);
+    if (!room || !room.gameState) return;
+    const gs = room.gameState;
+    if (gs.phase !== 'setup') return;
+    const pi = room.players.findIndex(p => p.id === socket.id);
+    if (pi === -1 || gs.ready[pi]) return;
+
+    const hi = gs.hands[pi].findIndex(c => c.id === handCardId);
+    const fi = gs.faceUp[pi].findIndex(c => c.id === faceUpCardId);
+    if (hi === -1 || fi === -1) return;
+
+    [gs.hands[pi][hi], gs.faceUp[pi][fi]] = [gs.faceUp[pi][fi], gs.hands[pi][hi]];
+    emitSHGameState(room);
+  });
+
+  socket.on('ready', () => {
+    if (!currentRoom) return;
+    const room = shRooms.get(currentRoom);
+    if (!room || !room.gameState) return;
+    const gs = room.gameState;
+    if (gs.phase !== 'setup') return;
+    const pi = room.players.findIndex(p => p.id === socket.id);
+    if (pi === -1) return;
+
+    gs.ready[pi] = true;
+    if (gs.ready[0] && gs.ready[1]) {
+      gs.phase = 'playing';
+      gs.turn = Math.random() < 0.5 ? 0 : 1;
+      gs.lastAction = `Coin flip — ${room.players[gs.turn].name} goes first!`;
+    }
+    emitSHGameState(room);
+  });
+
+  socket.on('play-cards', ({ cardIds }) => {
+    if (!currentRoom) return;
+    const room = shRooms.get(currentRoom);
+    if (!room || !room.gameState) return;
+    const gs = room.gameState;
+    if (gs.phase !== 'playing') return;
+    const pi = room.players.findIndex(p => p.id === socket.id);
+    if (pi === -1 || gs.turn !== pi) return;
+
+    const src = shSrcOf(gs, pi);
+    if (src === 'fd') return;
+
+    const idSet = new Set(cardIds);
+    const source = gs[src === 'h' ? 'hands' : 'faceUp'][pi];
+    const cards = source.filter(c => idSet.has(c.id));
+    if (!cards.length || cards.length !== cardIds.length) return;
+    if (!cards.every(c => c.r === cards[0].r)) return;
+    if (!shCanPlay(cards[0], gs.pile, gs.u7)) return;
+
+    const rank = cards[0].r;
+    // Remove cards from source
+    if (src === 'h') gs.hands[pi] = gs.hands[pi].filter(c => !idSet.has(c.id));
+    else gs.faceUp[pi] = gs.faceUp[pi].filter(c => !idSet.has(c.id));
+
+    gs.pile.push(...cards);
+
+    const burned = rank === 10 || shBurnCheck(gs.pile);
+    if (burned) {
+      gs.pile = [];
+      for (const p of room.players) sh.to(p.id).emit('burn');
+    }
+
+    gs.u7 = !burned && rank === 7;
+
+    // Refill hand from draw
+    while (gs.hands[pi].length < 3 && gs.draw.length) gs.hands[pi].push(gs.draw.shift());
+
+    if (shIsDone(gs, pi)) {
+      gs.phase = 'over';
+      gs.winner = pi;
+      gs.lastAction = `${room.players[pi].name} wins!`;
+    } else {
+      const RN = { 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10', 11: 'J', 12: 'Q', 13: 'K', 14: 'A' };
+      const lbl = cards.length > 1 ? `${cards.length}x ${RN[rank]}` : RN[rank];
+      if (burned) {
+        gs.lastAction = `${room.players[pi].name} played ${lbl} — burned the pile!`;
+      } else {
+        gs.turn = 1 - pi;
+        gs.lastAction = gs.u7
+          ? `${room.players[pi].name} played 7 — must play ≤ 7`
+          : `${room.players[pi].name} played ${lbl}`;
+      }
+    }
+    emitSHGameState(room);
+  });
+
+  socket.on('play-face-down', ({ index }) => {
+    if (!currentRoom) return;
+    const room = shRooms.get(currentRoom);
+    if (!room || !room.gameState) return;
+    const gs = room.gameState;
+    if (gs.phase !== 'playing') return;
+    const pi = room.players.findIndex(p => p.id === socket.id);
+    if (pi === -1 || gs.turn !== pi) return;
+    if (shSrcOf(gs, pi) !== 'fd') return;
+    if (index < 0 || index >= gs.faceDown[pi].length) return;
+
+    const card = gs.faceDown[pi].splice(index, 1)[0];
+    const playable = shCanPlay(card, gs.pile, gs.u7);
+
+    if (playable) {
+      gs.pile.push(card);
+      const burned = card.r === 10 || shBurnCheck(gs.pile);
+      if (burned) {
+        gs.pile = [];
+        for (const p of room.players) sh.to(p.id).emit('burn');
+      }
+      gs.u7 = !burned && card.r === 7;
+
+      if (shIsDone(gs, pi)) {
+        gs.phase = 'over';
+        gs.winner = pi;
+        gs.lastAction = `${room.players[pi].name} wins!`;
+      } else if (!burned) {
+        gs.turn = 1 - pi;
+        gs.lastAction = `${room.players[pi].name} flipped a card and played it!`;
+      } else {
+        gs.lastAction = `${room.players[pi].name} flipped a card — burned the pile!`;
+      }
+    } else {
+      // Not playable: card + pile go to hand
+      gs.hands[pi].push(card, ...gs.pile);
+      gs.pile = [];
+      gs.u7 = false;
+      gs.turn = 1 - pi;
+      gs.lastAction = `${room.players[pi].name} flipped a card — couldn't play it, picked up the pile!`;
+    }
+
+    // Send reveal to both, then game-state after delay
+    for (const p of room.players) {
+      sh.to(p.id).emit('face-down-reveal', { card, playable, pickedUp: !playable });
+    }
+    setTimeout(() => { if (shRooms.has(currentRoom)) emitSHGameState(room); }, 1200);
+  });
+
+  socket.on('pick-up-pile', () => {
+    if (!currentRoom) return;
+    const room = shRooms.get(currentRoom);
+    if (!room || !room.gameState) return;
+    const gs = room.gameState;
+    if (gs.phase !== 'playing') return;
+    const pi = room.players.findIndex(p => p.id === socket.id);
+    if (pi === -1 || gs.turn !== pi) return;
+    if (!gs.pile.length) return;
+
+    gs.hands[pi].push(...gs.pile);
+    gs.pile = [];
+    gs.u7 = false;
+    gs.turn = 1 - pi;
+    gs.lastAction = `${room.players[pi].name} picked up the pile.`;
+    emitSHGameState(room);
+  });
+
+  socket.on('play-again', () => {
+    if (!currentRoom) return;
+    const room = shRooms.get(currentRoom);
+    if (!room || room.players.length !== 2) return;
+    if (!room.gameState || room.gameState.phase !== 'over') return;
+    startSHGame(room);
+  });
+
+  socket.on('leave-room', () => { leaveSHRoom(socket, true); });
+  socket.on('disconnect', () => { leaveSHRoom(socket, false); });
+
+  function leaveSHRoom(sock, isExplicit) {
+    if (!currentRoom) return;
+    const room = shRooms.get(currentRoom);
+    if (!room) return;
+    for (const p of room.players) {
+      if (p.id !== sock.id) sh.to(p.id).emit('opponent-disconnected');
+    }
+    if (isExplicit) shRooms.delete(currentRoom);
     currentRoom = null;
   }
 });

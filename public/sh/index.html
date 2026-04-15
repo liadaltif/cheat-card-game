@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shithead / Palace</title>
+  <link rel="stylesheet" href="/sh/style.css" />
+</head>
+<body>
+
+  <!-- LOBBY -->
+  <div id="lobby">
+    <h1>Shithead</h1>
+    <p class="subtitle">Palace Card Game &mdash; 2 Players</p>
+
+    <div class="lobby-section">
+      <input id="player-name" type="text" placeholder="Your name" maxlength="20" autocomplete="off" />
+    </div>
+
+    <div class="lobby-section">
+      <button id="create-btn">Create Room</button>
+    </div>
+
+    <div id="room-code-display" class="hidden">
+      <p>Share this code with your opponent:</p>
+      <div id="room-code-value"></div>
+      <p class="waiting-text">Waiting for opponent...</p>
+    </div>
+
+    <div class="lobby-divider">or</div>
+
+    <div class="lobby-section join-section">
+      <input id="join-code" type="text" placeholder="Room code" maxlength="4" autocomplete="off" />
+      <button id="join-btn">Join Room</button>
+    </div>
+
+    <div id="lobby-error" class="error-msg hidden"></div>
+  </div>
+
+  <!-- GAME -->
+  <div id="game" class="hidden">
+    <div id="status-bar">
+      <div id="status-msg"></div>
+      <div id="turn-indicator"></div>
+    </div>
+
+    <div id="opponent-panel" class="panel"></div>
+
+    <div class="play-area">
+      <div class="pzone">
+        <div class="pzone-lbl" id="draw-lbl">DRAW</div>
+        <div class="pzone-pile" id="draw-pile"></div>
+      </div>
+      <div class="pzone">
+        <div class="pzone-lbl" id="pile-lbl">PILE</div>
+        <div class="pzone-pile" id="play-pile"></div>
+      </div>
+    </div>
+
+    <div id="player-panel" class="panel"></div>
+    <div class="btns" id="btns"></div>
+
+    <!-- Overlays -->
+    <div id="game-over-overlay" class="hidden">
+      <div class="overlay-box">
+        <div id="game-over-title"></div>
+        <div id="game-over-subtitle"></div>
+        <button id="play-again-btn">Play Again</button>
+        <button id="leave-btn">Leave Room</button>
+      </div>
+    </div>
+
+    <div id="disconnect-overlay" class="hidden">
+      <div class="overlay-box">
+        <div class="overlay-title">Opponent disconnected</div>
+        <button id="back-to-lobby-btn">Back to Lobby</button>
+      </div>
+    </div>
+
+    <div id="reconnecting-overlay" class="hidden">
+      <div class="overlay-box">
+        <div class="overlay-title reconnecting-title">Reconnecting...</div>
+        <p class="reconnecting-sub">Hang tight, getting you back in the game</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/sh/client.js"></script>
+</body>
+</html>
