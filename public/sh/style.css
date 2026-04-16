@@ -70,8 +70,9 @@ button:active { transform: scale(0.97); }
 /* ── Game screen ── */
 #game {
   height: 100%; width: 100%; max-width: 920px; margin: 0 auto;
-  display: flex; flex-direction: column; justify-content: center;
-  padding: 10px 20px 8px; gap: 10px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 6px 14px 10px; gap: 6px;
+  overflow: hidden;
 }
 
 /* ── Status bar ── */
@@ -168,7 +169,10 @@ button:active { transform: scale(0.97); }
 .opp-fan .card:last-child { margin-right: 0; }
 
 /* ── Buttons ── */
-.btns { flex-shrink: 0; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.btns {
+  flex-shrink: 0; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+  padding-top: 4px;
+}
 .btn {
   background: #3498db; color: #fff; border: none; border-radius: 7px;
   padding: 9px 24px; font-size: 13px; font-weight: 600;

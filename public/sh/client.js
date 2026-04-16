@@ -393,21 +393,46 @@ function renderPlayerPanel(state) {
   }
   playerPanel.appendChild(sr);
 
-  // Hand cards
+  // Hand cards — fan overlap when too many to fit in one row
   const hr = document.createElement('div');
-  hr.style.cssText = 'display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding-top:8px;';
+  hr.style.cssText = 'display:flex;gap:6px;justify-content:center;flex-wrap:nowrap;padding-top:14px;align-items:flex-end;overflow:visible;min-height:calc(var(--ch) + 18px);';
+
+  const handCards = state.hand;
+  const n = handCards.length;
+
+  // Compute overlap: read actual card width from an already-rendered card
+  let overlapPx = 0;
+  if (n > 1) {
+    const sampleCard = playerPanel.querySelector('.card');
+    const cw = sampleCard ? sampleCard.offsetWidth : 72;
+    const gameW = gameEl.offsetWidth || document.body.offsetWidth;
+    const maxW = Math.min(gameW - 20, 900);
+    const naturalW = cw * n + 6 * (n - 1);
+    if (naturalW > maxW) {
+      const minPeek = Math.max(20, cw * 0.28);
+      const peek = Math.max(minPeek, (maxW - cw) / (n - 1));
+      overlapPx = Math.max(0, cw - peek);
+    }
+  }
+
   if (isSetup) {
-    state.hand.forEach(card => {
+    handCards.forEach((card, i) => {
       const c = mkCard(card, false);
       c.style.position = 'relative';
+      c.style.flexShrink = '0';
+      c.style.zIndex = i;
+      if (overlapPx > 0 && i < n - 1) c.style.marginRight = `-${overlapPx}px`;
       setAct(c, `sh-${card.id}`);
       if (swapCard === card.id) c.classList.add('sel');
       hr.appendChild(c);
     });
   } else {
-    state.hand.forEach(card => {
+    handCards.forEach((card, i) => {
       const c = mkCard(card, false);
       c.style.position = 'relative';
+      c.style.flexShrink = '0';
+      c.style.zIndex = i;
+      if (overlapPx > 0 && i < n - 1) c.style.marginRight = `-${overlapPx}px`;
       if (selectedCards.has(card.id)) c.classList.add('sel');
       if (state.source === 'h' && pTurn && !canPlay(card, state.pileTop, state.pileSecond, state.pileCount, state.u7)) {
         c.classList.add('dim');
