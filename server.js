@@ -750,6 +750,7 @@ function getSHPlayerView(room, playerIdx) {
     opponentFaceDownCount: gs.faceDown[oppIdx].length,
     pileTop: gs.pile.length ? gs.pile[gs.pile.length - 1] : null,
     pileSecond: gs.pile.length >= 2 ? gs.pile[gs.pile.length - 2] : null,
+    pileEffTop: shEffTop(gs.pile),
     pileCount: gs.pile.length,
     drawCount: gs.draw.length,
     source: src,

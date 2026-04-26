@@ -70,19 +70,10 @@ function playTurnSound() {
 }
 
 // ── Pure helpers (for client-side dimming only; server validates) ─────────────
-function effTop(pile) {
-  for (let i = pile.length - 1; i >= 0; i--) if (pile[i].r !== 3) return pile[i];
-  return null;
-}
-function canPlay(card, pileTop, pileSecond, pileCount, u7) {
+function canPlay(card, pileEffTop, u7) {
   if (card.r === 2 || card.r === 3 || card.r === 10) return true;
-  // Reconstruct minimal pile for effTop
-  const pile = [];
-  if (pileSecond) pile.push(pileSecond);
-  if (pileTop) pile.push(pileTop);
-  const t = effTop(pile);
-  if (!t) return true;
-  return u7 ? card.r <= 7 : card.r >= t.r;
+  if (!pileEffTop) return true;
+  return u7 ? card.r <= 7 : card.r >= pileEffTop.r;
 }
 
 // ── Card DOM creation (ported from palace.html) ──────────────────────────────
@@ -434,7 +425,7 @@ function renderPlayerPanel(state) {
       c.style.zIndex = i;
       if (overlapPx > 0 && i < n - 1) c.style.marginRight = `-${overlapPx}px`;
       if (selectedCards.has(card.id)) c.classList.add('sel');
-      if (state.source === 'h' && pTurn && !canPlay(card, state.pileTop, state.pileSecond, state.pileCount, state.u7)) {
+      if (state.source === 'h' && pTurn && !canPlay(card, state.pileEffTop, state.u7)) {
         c.classList.add('dim');
       }
       if (state.source === 'h' && pTurn) setAct(c, `ph-${card.id}`);
@@ -504,7 +495,7 @@ function renderBtns(state) {
   } else if (state.phase === 'playing') {
     if (state.source !== 'fd') {
       const cards = state.source === 'h' ? state.hand : state.faceUp;
-      const hasValid = cards.some(c => canPlay(c, state.pileTop, state.pileSecond, state.pileCount, state.u7));
+      const hasValid = cards.some(c => canPlay(c, state.pileEffTop, state.u7));
       const pb = mk('Play selected', 'play', '');
       pb.disabled = !state.isYourTurn || !selectedCards.size;
       const ub = mk('Pick up pile', 'pup', 'outline');
